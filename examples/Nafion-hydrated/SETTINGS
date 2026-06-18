@@ -1,0 +1,301 @@
+#############################################################################################################
+# This example explains the settigns to analyse a NVE trajectory for a model of 
+# "nano-confined water in Nafion". Such system is an example of a REACTIVE system, where bonds break and 
+# form, leading to the formation of new chemical species. The user can use a ASE to visualise the generated
+# TRAJECTORY file. Due to restrictions in the size of files to be stored in the repository, the trajectory 
+# is only 30 ps long, rather short for a rigorous analysis. For this reason, the present case shall be 
+# regarded as an example application
+# For more details, the user is referred to the  use_code.md file of the root directory. Comments are 
+# preceded with the symbol "#". The following blocks and directives do not have to comply with the order of
+# appearance below. They are just ordered this way only for explanatory purposes, and consistent with the
+# use_code.md file.
+#
+# Acronyms:
+# TCF: Transfer Correlation Function 
+# OCF: Orientational Correlation Function
+# RDF: Radial Distribution Function
+# MSD: Mean Square Displacement
+# SPCF: Special Pair Correlation Function
+
+#############################################################################################################
+
+###########################  
+###########################
+###
+### MODEL related settings                             
+###
+###########################  
+###########################
+geometry_format   xyz       # Format for the atomic configurations of the trajectory
+
+##### The &reference_composition block: tagging the atomic species. 
+## This block is necessary to relate the atomic elements of the model to different chemical environments. 
+## In this model, Hch, Hs and Hw are all hydrogen atoms, but Hch is part of a backbone, Hs is initially part of SO3H, and Hw are water hydrogens. 
+&reference_composition      #######################   
+  atomic_species  7                               #  Total number of different atomic species. 
+  tags      Cch  Hch  Hs  Och  Sch   Hw   Ow      #  Each of the 7 tags. Each frame of the TRAJECTORY file should list the positions of "Cch" atoms, followed by the atomic positions of Hch atoms, and so on.  
+  amounts    56   60  4   12    4    112  56      #  Number of atoms for each tag
+  elements   C    H   H    O    S     H   O       #  Chemical elements corresponding to each tag 
+&end_reference_composition  #######################
+## IMPORTANT: the order for the definition of     #
+## tags, amounts and elements can be ANY, as long #
+## as they are consistent with the trajectory     #
+###################################################
+
+cell_units   Angstrom                             #  Units for the simulation cell defined in the &simulation_cell block. Valid units: Angstrom and Bohr
+
+##### The &simulation_cell block: definition of the simulation cell, only needed for trajectories in xyz format
+&simulation_cell  #################################
+ 10.06400  0.0000000    0.00000                   #  A(1,1)    A(1,2)    A(1,3)                   
+  0.000000 13.0735195   0.00000                   #  A(2,1)    A(2,2)    A(2,3)
+  0.000000  0.0000000  20.00000                   #  A(3,1)    A(3,2)    A(3,3)
+&end_simulation_cell                              #
+###################################################
+
+reactive_chemistry    True     # Indicate the algorithm to look for reactive species. Options
+                               # are True or False. If True, the block &reactive_species is required.
+
+##### The &reactive_species block. This is needed if "reactive_chemistry" is set to "True" 
+## This block must specify the criteria to define reactive species: H3O+ in this case.
+&reactive_species  ################################
+  type donor                               # Type of reactive system: either donor or acceptor. H3O+ is a (proton) donor.  
+  total_number     4                       # Total number of reactive species in the simulation cell
+
+  &bonding_criteria                               ##### Bonding composition of reactive species 
+    number_of_bonds   3                           # Each reactive species will be composed of an oxygen site (see &search_enviroment below) containinh 3 bonds... 
+    only_element      H                           # ... only with hydrogen atoms
+    cutoff          1.3  Angstrom                 # The maximum distance criteria ("cutoff") to define each bond for the reactive species is 1.3 Angstrom. Units can also be given in "Bohr"
+    &extra_reactive_bonds                         ### Definition of possible extra bonds, apart of the bonding criteria above. This is necessary for systems with interfaces. This example considers:
+      types_of_bonds 2                            # Two types of bonds:
+      Och  Hw  1.25  Angstrom                     # 1) bonds between Och and Hw with a cutoff of 1.25 Angstrom
+      Och  Hs  1.25  Angstrom                     # 2) bonds between Och and Hs with a cutoff of 1.25 Angstrom
+    &end_extra_reactive_bonds                     ###
+  &end_bonding_criteria                           #####
+
+  &search_environment                             #### Criteria to search for acceptor sites (Ow and Och) around each donor.    
+    include_tags     2  Ow Och                    # The search will only look for atoms with Ow and Och as atomic tags around the donor. This means that both Ow and Och will act as sites for the forming chemical species
+    exclude_pairs    1  Och                       # (Optional) Pairs Och-Och will be excluded in the search. This means that a Och acceptor will not have a Och as a donor. 
+    cutoff           3.20  Angstrom               # The search will be limited within 3.2 Angstrom around the donor. Units can also be set in Bohr
+  &end_search_environment                         ####
+
+&end_reactive_species ############################
+## IMPORTANT: internally, acceptors Ow and Och will changed their tags to Ow* and Och*, 
+## respectively, when they become part of the new donor. This new tagging is relevant to &RDF analysis
+######################################################################################################
+
+##### The &selected_nonreactive_species block. This blocks defines which portion of the non-reactive part of the system we want to monitor along the trajectory
+# IMPORTANT: The defined species MUST NOT be the reactive species
+&selected_nonreactive_species #####################
+  name H2O                                        # Name of the species. This does not need to be the formula unit. One could alternatively set "water"
+  reference_tag Ow                                # Only Ow atoms will be part of water. Ow sites can also form chemical species as described above
+  # Atomic composition
+  &atomic_components                              ##### This is to define the atomic composition of the nonreactive species. For the case of water it is obvious, but the structure of the block allows defining more complex structures:
+    number_components 2                           # Number of atomic components (H and O)
+    H  2                                          # 2 H atoms
+    O  1                                          # 1 O atom
+  &end_atomic_components                          #####
+  bond_cutoff      1.2 Angstrom                   # The maximum distance criteria for atomic bonding in this species is 1.2 Angstrom. Units can also be in "Bohr"
+&end_selected_nonreactive_species ################                           
+
+######################################
+######################################
+###
+### TRAJECTORY settings for analysis                                         
+###
+######################################
+######################################
+
+ensemble   NVE                       #  Type of ensemble. Options: NVE, NVT, NPT 
+recorded_timestep   10  fs           #  Time step of the recoderd trajectory, which does not need to be the same as the time step to integrate
+                                     #  the MD equations. Valid units: fs and ps. In this case, recorded_timestep could also be set to "0.010 ps"
+print_retagged_trajectory  TRUE      #  Print tagged trajectory (False by default)
+
+print_track_chemistry  True          # (True by default) This should be set to False if the code needs to be run multiple times.
+
+#### The &segment_trajectory block: instructs the code how to process and segment the trajectory. This is relevant to:
+#    * OCF
+#    * MSD
+#    * TCF
+#    * SPCF
+#    * OCF_REACTIVE    
+# Computed averages will be printed to _AVG files. To compute each of the listed quantities, the corresponding block must be defined. 
+&segment_trajectory     #######                                  
+  segment_time     10.0  ps    # Take time segments of 10 ps
+  restart_every    0.50  ps    # Initialise a new analysis every 0.50 ps. This is convenient to average computed quantities
+  start_time       2.00  ps    # Ignore the first 2 ps of the trajectory 
+  end_time        25.00  ps    # Analyse the trajectory up to 25 ps 
+&end_segment_trajectory #######
+## IMPORTANT: by default, the computed SPCF, TCF, OCF, OCF_REACTIVE and MSD for all the multiple time segments are not printed. 
+## In case the user still wants to print the results for all time segments, the "print_all_segments" directive
+## must be set to .True. inside the corresponding block.
+
+
+# To instruct ALC_ART which quantity to compute from the trajectory, it is necessary to define different blocks, depending if the requested quantity is related to
+# reactive or non-reactive species, or simply a general quantity. The corresponding blocks are:
+# 1) &reactive_analysis, whithin which the user must define quantities that purely involve "reactive" species. Implemented features are:
+#    * TCF             (&tcf)
+#    * SPCF            (&spcf)
+#    * OCF_REACTIVE    (&ocf_reactive)
+#    * Residence Times (&residence_times)
+
+&reactive_analysis
+  #### The &tcf block: computes the TCF for the reactive species. This block generates the TCF files
+  &tcf                                         
+    method  HiCF                                    # Method used. In this case the History Independent Correlation Function (HiCF) is computed. Implemented options: HiCF and HdCF 
+    print_all_segments  .True.                     # Optional directive to print results for all the time segments. This directive generates the TCF_ALL file
+  &end_tcf                                     
+  ####
+  
+  #### The &spcf block: computes the SPCF for the reactive species. This block generates the SPCF files
+  &spcf                                         
+    method  HiCF                                    # Method used. In this case the History Independent Correlation Function (HiCF) is computed. Implemented options: HiCF and HdCF
+    print_all_segments  .True.                     # Optional directive to print results for all the time segments. This directive generates the SPCF_ALL file
+  &end_spcf                                     
+  ####
+  
+  #### The &residence_times block: computes the residence times (in this case the proton) or, equivalently, the lifetime for each reactive species. This block generates the REST_TIMES file
+  &residence_times                                         
+    rattling_wait  0.2 ps                           # Once the transfer (in this case H) has occurred, the algorithm will wait 0.2 ps to accept the transfer. If the proton returns back to its donor, the transfer (rattling) is discarded
+  &end_residence_times                                    
+  ####
+  
+  #### The &ocf_reactive block: computes the orientational correlation function associated with the reactive species and their environemnts.
+  &ocf_reactive
+    legendre_order  2                               # Define the order of the Legendre polynomial.  
+    u_definition   special_pair                     # defines the u_definition to define the orientation. Implemented options: "special_pair" and "unrattled_special_pair" (not recommended at this stage of development)   
+    print_all_segments  .True.                      # Optional directive to print results for all the time segments. This directive generates the OCF_REACTIVE_ALL file
+  &end_ocf_reactive
+
+# this closes the block 
+&end_reactive_analysis
+
+# 2) &nonreactive_analysis, whithin which the user must define quantities that purely involve "non-reactive" species. Implemented features are:
+#    * MSD             (&msd)
+#    * OCF             (&ocf_nonreactive)
+#    * Statistics for intramolecular angle and distances (&intramol_statistics)
+#    * Statistics for intermolecular angle and distances (&intermol_statistics)
+&nonreactive_analysis
+  #### Computes the average number (and STD) of the nonreactive species. The computed number depends on the settings for the &region block and the start_time directive, if defined. Results are printed to the OUTPUT file 
+  compute_amount   .True.                         #  Either True or False. Default is False
+
+  ##### Computation of intra-molecular geometry (distances and angles) for nonreactive species.
+  &intramol_statistics
+    # Computation of probability density for intramolecular distances. Results are printed to the INTRAMOL_DISTANCES file
+    &distance_parameters
+      species  O H                                # Only consider distances between the species O and H
+      lower_bound    0.8 Angstrom                 # Consider distances larger than 0.8 Angstrom
+      upper_bound    1.4 Angstrom                 # Consider distance lower than 1.4 Angstrom
+      delta    0.005  Angstrom                    # Use a discretization of 0.005 Angstrom between 0.8 and 1.4 Angstrom 
+   &end_distance_parameters
+
+    # Computation of the probability density for intramolecular angles, only involving the species as defined below. Results are printed to the INTRAMOL_ANGLES file 
+    &angle_parameters
+      species    H O H                            # Species involved: the order of the species is relevant, with the species being the central one. Here we compute the angle formed between O and the two H.
+      lower_bound     80   degrees                # Consider angles larger than 80 degrees
+      upper_bound     130  degrees                # Consider angles lower than 130 degrees
+      delta       0.5    degrees                  # Use a discretization of 0.5 degrees between 80 and 130 degrees
+    &end_angle_parameters
+  &end_intramol_statistics
+
+  ##### Computation of intermolecular distances and angles between nonreactive species
+  &Intermol_statistics
+   # Computation of probability density for intermolecular distances between nonreactive species. Results are printed to the INTERMOL_DISTANCES_NN1 and INTERMOL_DISTANCES_NN2 files.
+   # Here we do not need to defined the species involved as ALC_ART will automatically select the species defined for "reference_tag" above
+   # ALC_ART will compute the probability densities for the first and the second nearest neighbour distances
+   &distance_parameters                           
+     delta    0.01  Angstrom                     # Use a discretization of 0.01 Angstrom between 2.3 and 4.0 Angstrom 
+     lower_bound    2.3  Angstrom                # Consider distance larger than 2.3 Angstrom
+     upper_bound    4.0 Angstrom                 # Consider distance lower than 4.0 Angstrom
+   &end_distance_parameters
+   
+   # Computation of the probability density for the angle that each nonreactive species form with the first and the second nearest species. Results are printed to the INTERMOL_ANGLES_NN file
+   &angle_parameters
+     lower_bound    30   degrees                 # Consider angles larger than 30 degrees
+     upper_bound    180  degrees                 # Consider angles lower than 180 degrees
+     delta          2    degrees                 # Use a discretization of 2 degrees between 30 and 180 degrees
+   &end_angle_parameters
+
+   only_ref_tags_as_nn   .True.                  # This tag ensures that only pure non-reactive species are considered in the analysis. If this directive is ommited or set to .False., only H3O+ could be considered as NN sites.
+
+  &end_intermol_statistics
+
+  #### The &msd block: computes the MSD for the nonreactive species. This block generates the MSD files 
+  &msd                                              
+    select xy                                       # Compute only the xy component of the MSD. Options are: x, y, z, xy, xz, yz and xyz
+    pbc_xyz   T  T  T                               # Instructs is PBCs are applied to each coordinate or not 
+    print_all_segments  .True.                     # Optional directive to print results for all the time segments. This directive generates the MSD_ALL file
+  &end_msd                                          
+  ####
+  
+  #### The &ocf_nonreactive block: computes the OCF for the nonreactive species. This block generates the OCF files
+  &ocf_nonreactive                                              
+    legendre_order  2                               # Define the order of the Legendre polynomial.  
+    u_definition    bond_12-13                      # Definition of the unit vector to evaluate the OCF. Options available are: "bond_12", "bond_13", "bond_123", "bond_12-13" and "plane".
+    print_all_segments  .True.                     # Optional directive to print results for all the time segments. This directive generates the OCF_NONREACTIVE_ALL file
+  &end_ocf_nonreactive                                          
+  ####
+
+# this closes the block 
+&end_nonreactive_analysis
+
+# 3) &general_analysis, whithin which the user must define quantities that all species, independently if they are reactive or not. Implemented features are:
+#    * RDF             (&rdf)
+#    * Tracking atomic indexes that preserve their chemistry along the trajectory (&track_unchanged_chemistry) 
+#    * Coordinate (x, y or z) distribution for a given atomic tag                 (&coord_distrib)
+#    * Statistics for the distances between nearest neighbours                    (&selected_nn_distances)
+&general_analysis
+  #### The &rdf block: computes the RDF for the species defined. Results are printed to the RDF file. 
+  &rdf                                              
+   dr 0.02  Angstrom                                # Use a distance discretization of 0.02 Angstrom
+   tags_species_a  1  Ow                            # Defines the tags of species a
+   tags_species_b  2  Ow* Och*                      # Defines the tags of species b
+  &end_rdf                                          
+  ####
+  
+  #### The &track_unchanged_chemistry block: allows tracking species that do not change their chemistry along the trajectory. Results are printed to the UNCHANGED_CHEMISTRY file
+  ## IMPORTANT: if for some unexpected reason the defined species to track change their chemistry, the analysis will be printed up to the frame when the species changed its chemistry
+  &track_unchanged_chemistry
+    number 4                                        # Number of indexes to track
+    tag  Sch                                        # Requested species tag
+    list_indexes  133  134 135  136                 # Atomic indexes. If these indexes do not correspond to the requested tag, the execution is aborted
+  &end_track_unchanged_chemistry 
+  
+  #### The &coord_distrib block: computed the probability of finding a given species along the selected coordinate (x, y or z) for the trajectory. Results are printed to the COORD_DISTRIBUTION file.
+  &coord_distrib
+    species Ow                                      # species to compute the probability
+    coordinate z                                    # coordinate under consideration 
+    delta  0.1 Angstrom                             # coordinate discretization
+  &end_coord_distrib
+  
+  #### The &selected_nn_distances block: computes the probability density for the closest distance between the species defined, for the domain defined between lower_bound and upper_bound. 
+  ###  Results are printed to the SELECTED_NN_DISTANCES file.
+  &selected_nn_distances  
+    reference_species    Ow                     # consider Ow as the reference species                                                    
+    nn_species     4  Ow Ow* Och Och*           # Number of different tags, followed by the list of sites to be considered
+    lower_bound    2.3  Angstrom                # Consider distance larger than 2.3 Angstrom
+    upper_bound    3.0 Angstrom                 # Consider distance lower than 3.0 Angstrom
+    dr             0.01  Angstrom               # Use a discretization of 0.01 Angstrom between 2.3 and 3.0 Angstrom
+  &end_selected_nn_distances
+
+# this closes the block
+&end_general_analysis
+
+#### The &region block: constrains the analysis to a given region within the simulation cell. This is relavant to:
+## This block is convenient to systems with interfaces such as this example. This is relevant to:
+#  * TCF
+#  * SPCF
+#  * OCF_REACTIVE
+#  * OCF
+#  * MSD
+#  * Intramolecular parameters (nonreactive species)
+#  * Intermolecular parameters (nonreactive species)
+#  * RDF
+#  * shortest distance distribution for the selected pair
+## If "Delta_" directives are omitted, the whole spatial domain of the simulation cell along x, y or z is considered
+## IMPORTANT: If this block is omitted, the whole simulation cell is considered.
+## ALC_ART accepts multiple regions along x, y and z.
+&region      ###############################                                     
+  Delta_x   -1.6  11.6  inside             # Defines the x domain for analysis  
+  Delta_y   -1.0  14.0  inside             # Defines the y domain for analysis
+  Delta_z    8.0  12.0  outside            # Defines the z domain for analysis
+&end_region  ###############################

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+[ -f 'OUTPUT' ]                  && rm  OUTPUT  
+[ -f 'TRACK_CHEMISTRY' ]         && rm  TRACK_CHEMISTRY 
+[ -f 'TAGGED_TRAJECTORY' ]       && rm  TAGGED_TRAJECTORY
+[ -f 'OCF_NONREACTIVE_ALL' ]     && rm  OCF_NONREACTIVE_ALL 
+[ -f 'OCF_NONREACTIVE_AVG' ]     && rm  OCF_NONREACTIVE_AVG
+[ -f 'OCF_REACTIVE_ALL' ]        && rm  OCF_REACTIVE_ALL 
+[ -f 'OCF_REACTIVE_AVG' ]        && rm  OCF_REACTIVE_AVG 
+[ -f 'MSD_ALL' ]                 && rm  MSD_ALL
+[ -f 'MSD_AVG' ]                 && rm  MSD_AVG 
+[ -f 'SPCF_ALL' ]                && rm  SPCF_ALL
+[ -f 'SPCF_AVG' ]                && rm  SPCF_AVG
+[ -f 'TCF_ALL' ]                 && rm  TCF_ALL
+[ -f 'TCF_AVG' ]                 && rm  TCF_AVG
+[ -f 'UNCHANGED_CHEMISTRY' ]     && rm  UNCHANGED_CHEMISTRY
+[ -f 'RDF' ]                     && rm  RDF 
+[ -f 'RES_TIMES' ]               && rm  RES_TIMES
+[ -f 'COORD_DISTRIBUTION' ]      && rm  COORD_DISTRIBUTION
+[ -f 'INTRAMOL_DISTANCES' ]      && rm  INTRAMOL_DISTANCES
+[ -f 'INTRAMOL_ANGLES' ]         && rm  INTRAMOL_ANGLES 
+[ -f 'INTERMOL_DISTANCES_NN1' ]  && rm  INTERMOL_DISTANCES_NN1
+[ -f 'INTERMOL_DISTANCES_NN2' ]  && rm  INTERMOL_DISTANCES_NN2
+[ -f 'INTERMOL_ANGLES_NN' ]      && rm  INTERMOL_ANGLES_NN
+[ -f 'SELECTED_NN_DISTANCES' ]   && rm  SELECTED_NN_DISTANCES

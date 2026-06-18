@@ -1,0 +1,183 @@
+#############################################################################################################
+# This explanatory example defines the settings to analyse a NVE trajectory for a model composed of 64 water
+# molecules in a cubic box. This is an example of a NON-REACTIVE system.
+# The user can use a ASE to visualise the generated TRAJECTORY file. 
+# Due to restrictions in the size of files to be stored in the repository, the trajectory is only 30 ps long,
+# rather short for a rigorous analysis. For this reason, the present case shall be regarded as an example 
+# application. For more details, the user is referred to the  use_code.md file of the root directory. 
+# Comments are preceded with the symbol "#". The following blocks and directives do not have to comply 
+# with the order of appearance below. 
+#
+# Acronyms:
+# OCF: Orientational Correlation Function
+# RDF: Radial Distribution Function
+# MSD: Mean Square Displacement
+#
+############################################################################################################
+
+###########################  
+###########################
+###
+### MODEL related settings                             
+###
+###########################  
+###########################
+geometry_format   xyz                       # Format for the atomic configurations of the trajectory
+
+##### The &reference_composition block: tagging the atomic species. 
+## This block is necessary to relate the atomic elements of the model to different chemical environments. 
+&reference_composition   ##########################                             
+  atomic_species  2                               #  Total number of different atomic species. 
+  tags       Hw   Ow                              #  Each of the 2 tags. Each frame of the TRAJECTORY file should list the positions of the 128 "Hw" atoms, followed by positions of the 64 "Ow" atoms
+  amounts    128   64                             #  Number of atoms of each tag
+  elements    H   O                               #  Chemical elements corresponding to each tag 
+&end_reference_composition                        #
+## IMPORTANT: the order for the definition of     #
+## tags, amounts and elements can be ANY, as long #
+## as they are consistent with the trajectory     #
+###################################################
+
+cell_units   Angstrom                             #  Units for the simulation cell defined in the &simulation_cell block. Valid units: Angstrom and Bohr
+
+##### The &simulation_cell block: definition of the simulation cell, only needed for trajectories in xyz format
+&simulation_cell                                  #
+ 12.420000   0.0000000   0.00000                  #  A(1,1)    A(1,2)    A(1,3)                   
+  0.000000  12.4200000   0.00000                  #  A(2,1)    A(2,2)    A(2,3)
+  0.000000   0.0000000  12.42000                  #  A(3,1)    A(3,2)    A(3,3)
+&end_simulation_cell                              #
+###################################################
+
+reactive_chemistry False                          # Indicate the algorithm to look for reactive species. Options are True or False. If True, the block &reactive_species is required:
+
+##### The &selected_nonreactive_species block. This blocks defines which portion of the non-reactive part of the system we want to monitor along the trajectory
+# IMPORTANT: The defined species MUST NOT be the reactive species
+&selected_nonreactive_species #####################
+  name H2O                                        # Name of the species. This does not need to be the formula unit. One could alternatively set "water"
+  reference_tag Ow                                # Only Ow atoms will be part of water. Ow sites can also form chemical species as described above
+  # Atomic composition
+  &atomic_components                              ##### This is to define the atomic composition of the nonreactive species. For the case of water it is obvious, but the structure of the block allows defining more complex structures:
+    number_components 2                           # Number of atomic components (H and O)
+    H  2                                          # 2 H atoms
+    O  1                                          # 1 O atom
+  &end_atomic_components                          #####
+  bond_cutoff      1.2 Angstrom                   # The maximum distance criteria for atomic bonding in this species is 1.2 Angstrom. Units can also be in "Bohr"
+&end_selected_nonreactive_species ################
+
+######################################
+######################################
+###
+### TRAJECTORY settings for analysis                                         
+###
+######################################
+######################################
+
+ensemble   NVE                #  Type of ensemble. Options: NVE, NVT, NPT 
+recorded_timestep   10  fs    #  Time step of the recoderd trajectory, which is not necessarily the same as the time step to integrated the MD equations. 
+                              #  Valid units: fs and ps. In this case, recorded_timestep could also be set to "0.010 ps"
+
+#### The &segment_trajectory block: instructs the code how to process and segment the trajectory. This is relevant to:
+#    * OCF
+#    * MSD
+# Computed averages will be printed to _AVG files. 
+&segment_trajectory     #######                                  
+  segment_time    10.0  ps    # Take time segments of 10 ps
+  restart_every    0.50  ps   # Initialise a new analysis every 0.50 ps. This is convenient to average computed quantities
+  start_time       2.00  ps   # Ignore the first 2 ps of the trajectory  
+  end_time        28.00  ps   # Consider 28 ps of the total trajectory (use only in special cases)
+&end_segment_trajectory #######
+## IMPORTANT: by default, the computed OCF and MSD for all the multiple time segments are not printed. 
+## In case the user still wants to print the results for all time segments, the "print_all_segments" directive
+## must be set to .True. inside the corresponding block.
+
+
+# So far, we have described how the trajectory will be segmented (&segment_trajectory). 
+# To instruct ALC_ART which quantity to compute from the trajectory, it is necessary to define different blocks. Since we have non-reactive species only, we can only define the "&nonreactive_analysis" and the "&general_analysis" blocks.
+
+# 1) &nonreactive_analysis, whithin which the user must define quantities that purely involve "non-reactive" species. Implemented features are:
+#    * MSD             (&msd)
+#    * OCF             (&ocf_nonreactive)
+#    * Statistics for intramolecular angle and distances (&intramol_statistics)
+#    * Statistics for intermolecular angle and distances (&intermol_statistics)
+&nonreactive_analysis
+  #### The &msd block: computes the MSD for the nonreactive species. This block generates the MSD files 
+  &msd                                              
+    select xy                                       # Compute only the xy component of the MSD. Options are: x, y, z, xy, xz, yz and xyz
+    pbc_xyz   T  T  T                               # Instructs is PBCs are applied to each coordinate or not 
+    print_all_segments  .True.                     # Optional directive to print results for all the time segments. This directive generates the MSD_ALL file
+  &end_msd                                          
+  ####
+  
+  #### The &ocf_nonreactive block: computes the OCF for the nonreactive species. This block generates the OCF files
+  &ocf_nonreactive                                              
+    legendre_order  2                               # Define the order of the Legendre polynomial.  
+    u_definition    bond_123                      # Definition of the unit vector to evaluate the OCF. Options available are: "bond_12", "bond_13", "bond_123", "bond_12-13" and "plane".
+    print_all_segments  .True.                     # Optional directive to print results for all the time segments. This directive generates the OCF_NONREACTIVE_ALL file
+  &end_ocf_nonreactive                                          
+  ####
+
+  #### Computes the average number (and STD) of the nonreactive species. This is irrelevant for nonreactive systems. Results are printed to the OUTPUT file 
+  compute_amount   .True.                         #  Either True or False
+
+  ##### Computation of intra-molecular geometry (distances and angles) for nonreactive species.
+  &intramol_statistics
+    # Computation of probability density for intramolecular distances. Results are printed to the INTRAMOL_DISTANCES file
+    &distance_parameters
+      species  O H                                # Only consider distances between the species O and H
+      lower_bound    0.8 Angstrom                 # Consider distances larger than 0.8 Angstrom
+      upper_bound    1.4 Angstrom                 # Consider distance lower than 1.4 Angstrom
+      delta    0.005  Angstrom                    # Use a discretization of 0.005 Angstrom between 0.8 and 1.4 Angstrom 
+   &end_distance_parameters
+
+    # Computation of the probability density for intramolecular angles, only involving the species as defined below. Results are printed to the INTRAMOL_ANGLES file 
+    &angle_parameters
+      species    H O H                            # Species involved: the order of the species is relevant, with the species being the central one. Here we compute the angle formed between O and the two H.
+      lower_bound     80   degrees                # Consider angles larger than 80 degrees
+      upper_bound     130  degrees                # Consider angles lower than 130 degrees
+      delta       0.5    degrees                  # Use a discretization of 0.5 degrees between 80 and 130 degrees
+    &end_angle_parameters
+  &end_intramol_statistics
+
+  ##### Computation of intermolecular distances and angles between nonreactive species
+  &Intermol_statistics
+   # Computation of probability density for intermolecular distances between nonreactive species. Results are printed to the INTERMOL_DISTANCES_NN1 and INTERMOL_DISTANCES_NN2 files.
+   # Here we do not need to defined the species involved as ALC_ART will automatically select the species defined for "reference_tag" above
+   # ALC_ART will compute the probability densities for the first and the second nearest neighbour distances
+   &distance_parameters                           
+     delta    0.01  Angstrom                     # Use a discretization of 0.01 Angstrom between 2.3 and 4.0 Angstrom 
+     lower_bound    2.3  Angstrom                # Consider distance larger than 2.3 Angstrom
+     upper_bound    4.0 Angstrom                 # Consider distance lower than 4.0 Angstrom
+   &end_distance_parameters
+   
+   # Computation of the probability density for the angle that each nonreactive species form with the first and the second nearest species. Results are printed to the INTERMOL_ANGLES_NN file
+   &angle_parameters
+     lower_bound    30   degrees                 # Consider angles larger than 30 degrees
+     upper_bound    180  degrees                 # Consider angles lower than 180 degrees
+     delta          2    degrees                 # Use a discretization of 2 degrees between 30 and 180 degrees
+   &end_angle_parameters
+  &end_intermol_statistics
+
+# this closes the block 
+&end_nonreactive_analysis
+
+# 2) &general_analysis, whithin which the user must define quantities that all species, independently if they are reactive or not. For this example we will only consider:
+#    * RDF             (&rdf)
+#    * Coordinate (x, y or z) distribution for a given atomic tag                 (&coord_distrib)
+&general_analysis
+  #### The &rdf block: computes the RDF for the species defined. Results are printed to the RDF file. 
+  &rdf                                              
+   dr 0.02  Angstrom                                # Use a distance discretization of 0.02 Angstrom
+   tags_species_a  1  Ow                            # Defines the tags of species a
+   tags_species_b  1  Ow                            # Defines the tags of species b
+  &end_rdf                                          
+  ####
+  
+  #### The &coord_distrib block: computed the probability of finding a given species along the selected coordinate (x, y or z) for the trajectory. Results are printed to the COORD_DISTRIBUTION file.
+  &coord_distrib
+    species Ow                                      # species to compute the probability
+    coordinate z                                    # coordinate under consideration 
+    delta  0.1 Angstrom                             # coordinate discretization
+  &end_coord_distrib
+
+# this closes the block
+&end_general_analysis
+
