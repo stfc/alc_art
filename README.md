@@ -37,7 +37,7 @@ ALC_ART contains the following set of files and folders (in italic-bold):
 ## Dependencies
 The user must have access to the following software (locally):
 
-* GNU-Fortran (11.4.0) or Intel-Fortran (ifx 2023.1.0)
+* GNU-Fortran (11.2.0) or Intel-Fortran (ifx 2023.1.0)
 * Cmake (3.16)
 * Make (4.2.1)
 * Git (2.34.1)

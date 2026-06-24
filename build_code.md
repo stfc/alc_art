@@ -4,7 +4,7 @@ The following notes describe the steps to build **ALC_ART** using the [**CMake**
 ## Software required
 The user must have access to the following software (locally):
 
-* GNU-Fortran (11.4.0) or Intel-Fortran (ifx 2023.1.0)
+* GNU-Fortran (11.2.0) or Intel-Fortran (ifx 2023.1.0)
 * Cmake (3.16)
 * Make (4.2.1)
 * Git (2.34.1)
@@ -66,13 +66,9 @@ If the compiler is GNU-Fortran, the pre-defined compilation flags for the *Relea
 ```
 In contrast, if the selected option is *Debug*, the predefined compilation flags are: 
 ```sh
-"-g -Wextra -Wuse-without-only -frecord-gcc-switches -O0 -std=gnu -pedantic -fbacktrace -fcheck=all -finit-integer=2147483647  
--finit-real=snan -finit-logical=true -finit-character=42 -ffpe-trap=invalid,zero,overflow -fdump-core -fstack-protector-all -Wall -pipe"
+"-g -Wextra -Wuse-without-only -frecord-gcc-switches -O0 -std=gnu -pedantic -fbacktrace -fcheck=all -finit-integer=2147483647 -finit-real=snan -finit-logical=true -finit-character=42 -ffpe-trap=invalid,zero,overflow -fdump-core -fstack-protector-all -Wall -pipe"
 ```
-for *gFortran* versions older than 6.5. If the compiler version is 7.0 or newer, the flags *-finit-derived* and *-frecursive* are also added to the list above.  
-
 #### Intel-Fortran compiler
-
 For *Intel-Fortran* compiler ifx, the pre-defined flags for option *Debug* are:
 ```sh
 "-g -O0 -stand f08 -traceback -C -check all,nouninit -ftrapuv -init=snan -init=arrays"
