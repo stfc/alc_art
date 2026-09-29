@@ -1,3 +1,7 @@
+## Citing the code
+Please cite the following work in publications making use of **ALC_ART** using the following DOI:  
+[https://doi.org/10.5281/zenodo.23037325](https://doi.org/10.5281/zenodo.23037325)  
+
 ## About the code
 **ALC_ART** (**A**da **L**ovelace **C**entre **A**nalysis of **R**eactive **T**rajectories) offers an open-source tool to extract orientational anisotropies and transfer correlations from Molecular Dynamics (MD) simulations of reactive systems. By "reactive" we refer to systems in gas and condensed phase where the constituent atomic species change their chemistry composition along the trajectory, forming and breaking bonds, as it occurs in anion [\[1\]](https://pubs.acs.org/doi/10.1021/acs.jpcc.8b10298) and proton exchange membranes [\[2\]](https://pubs.acs.org/doi/10.1021/acs.jpclett.1c04071?ref=PDF), for example. The implemented capabilities allow computing: 
 
